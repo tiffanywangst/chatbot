@@ -34,7 +34,7 @@ def create_chatbot():
         """
         try:
             # Call the get_response method from your Chatbot class
-            response = chatbot.get_response(message)
+            response = chatbot.get_response(message, history)
             return response
             
         except Exception as e:
@@ -57,7 +57,6 @@ def create_chatbot():
             "What are some REST requirements for a Course 8 major?",
             "I need a HASS-S course that doesn't have 8:00 AM lectures."
         ],
-        # theme="soft" # Optional: gives it a cleaner, modern look
     )
     
     return demo

@@ -1,12 +1,66 @@
 from huggingface_hub import InferenceClient
 from config import BASE_MODEL, MY_MODEL, HF_TOKEN
 
+SYSTEM_PROMPT = """
+You are a helpful assistant that helps students explore and understand MIT’s course catalog. You have knowledge about MIT subjects, including:
+
+- Subject numbers and titles (e.g., 6.3900, 18.600, 6.1010)
+
+- Course descriptions and topics covered
+
+- Prerequisites and recommended background
+
+- Units and workload expectations
+
+- Department or course number (e.g., Course 6, Course 18)
+
+- Communication Intensive (CI) and HASS designations
+
+- Undergraduate vs graduate subjects
+
+- Relationships between introductory, intermediate, and advanced classes
+
+When helping students:
+
+- Ask clarifying questions about their interests, major, experience level, and goals
+
+- Provide specific course suggestions when possible
+
+- Explain what a course covers in simple terms
+
+- Suggest related or follow-up courses when relevant
+
+- Be honest when you are unsure about specific details and direct students to the official MIT catalog at catalog.mit.edu
+
+- If the user asks questions unrelated to MIT courses, politely redirect the conversation back to MIT subjects
+
+Key facts:
+
+- MIT subjects are identified by subject numbers such as 6.3900 or 18.600
+
+- The first number typically indicates the department or “course” (e.g., Course 6 for EECS, Course 18 for Mathematics)
+
+- Many subjects have prerequisites that students should complete beforehand
+
+- Subjects typically have unit counts representing lecture, lab, and preparation time
+
+- The official MIT course catalog is available at catalog.mit.edu
+
+Example questions:
+
+- What is 6.3900 about?
+- What machine learning classes are offered at MIT?
+- What prerequisites do I need before taking 6.3900?
+- What math classes should I take before studying machine learning?
+- What are some introductory programming classes at MIT?
+"""
+
 class Chatbot:
     def __init__(self):
         model_id = MY_MODEL if MY_MODEL else BASE_MODEL
         self.client = InferenceClient(model=model_id, token=HF_TOKEN)
         
-    def format_prompt(self, user_input):
+    def format_prompt(self, user_input, history=None):
         """
         Formats the input using Llama 3.1 chat templates to ensure the 
         model stays in 'Advisor Mode'.
@@ -23,26 +77,28 @@ class Chatbot:
             "4. Be concise, professional, and encouraging."
         )
         
-        # Llama 3.1 Chat Format
-        prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_instructions}<|eot_id|>"
-        prompt += f"<|start_header_id|>user<|end_header_id|>\n\n{user_input}<|eot_id|>"
-        prompt += f"<|start_header_id|>assistant<|end_header_id|>\n\n"
+        # prompt = f"<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{system_instructions}<|eot_id|>"
+        # prompt += f"<|start_header_id|>user<|end_header_id|>\n\n{user_input}<|eot_id|>"
+        # prompt += f"<|start_header_id|>assistant<|end_header_id|>\n\n"
         
-        return prompt
-        
-    def get_response(self, user_input):
+        # return prompt
+        messages =  [{"role":"system", "content":SYSTEM_PROMPT}]
+
+        if history:
+            for user_msg, bot_msg in history:
+                messages.append({"role": "user", "content": user_msg})
+                messages.append({"role": "assistant", "content": bot_msg})
+
+        messages.append({"role": "user", "content": user_input})
+        return messages
+
+    def get_response(self, user_input, history=None):
         """
         Generates a response using the formatted prompt.
         """
-        formatted_input = self.format_prompt(user_input)
+        formatted_input = self.format_prompt(user_input, history)
         
-        # We switch to chat_completion to fix the Novita/Provider error.
-        # We pass your 'already-formatted' prompt as the content.
         response = self.client.chat_completion(
-            messages=[{"role": "user", "content": formatted_input}],
-            max_tokens=500,
-            temperature=0.7,
-            stream=False
-        )
+            messages=formatted_input)
         
         return response.choices[0].message.content
