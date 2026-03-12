@@ -1,5 +1,6 @@
 from huggingface_hub import InferenceClient
 from config import BASE_MODEL, MY_MODEL, HF_TOKEN
+from src.catalog import fetch_courses, search_courses
 
 SYSTEM_PROMPT = """
 You are a helpful assistant that helps students explore and understand MIT’s course catalog. You have knowledge about MIT subjects, including:
@@ -49,10 +50,14 @@ Key facts:
 Example questions:
 
 - What is 6.3900 about?
-- What machine learning classes are offered at MIT?
-- What prerequisites do I need before taking 6.3900?
-- What math classes should I take before studying machine learning?
-- What are some introductory programming classes at MIT?
+- What ML classes exist at MIT?
+- I want robotics courses
+- What is a good intro programming class?
+- Compare 6.3900 and 6.8611
+
+Use the provided MIT catalog entries as your main source of truth.
+Do not invent course descriptions, prerequisites, instructors, or offerings.
+If the catalog context is incomplete, say so clearly.
 """
 
 class Chatbot:
@@ -85,9 +90,16 @@ class Chatbot:
         messages =  [{"role":"system", "content":SYSTEM_PROMPT}]
 
         if history:
-            for user_msg, bot_msg in history:
-                messages.append({"role": "user", "content": user_msg})
-                messages.append({"role": "assistant", "content": bot_msg})
+            for item in history:
+                if isinstance(item, (list, tuple)) and len(item) == 2:
+                    user_msg, bot_msg = item
+                    messages.append({"role": "user", "content": user_msg})
+                    messages.append({"role": "assistant", "content": bot_msg})
+                elif isinstance(item, dict):
+                    role = item.get("role")
+                    content = item.get("content")
+                    if role and content:
+                        messages.append({"role": role, "content": content})
 
         messages.append({"role": "user", "content": user_input})
         return messages
@@ -97,8 +109,11 @@ class Chatbot:
         Generates a response using the formatted prompt.
         """
         formatted_input = self.format_prompt(user_input, history)
-        
-        response = self.client.chat_completion(
-            messages=formatted_input)
-        
-        return response.choices[0].message.content
+
+        try:
+            response = self.client.chat_completion(
+                messages=formatted_input,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            return f"An error occurred while generating a response: {str(e)}"
