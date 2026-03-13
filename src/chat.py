@@ -159,8 +159,6 @@ class Chatbot:
         try:
             response = self.client.chat_completion(
                 messages=formatted_input,
-                max_tokens=400,
-                temperature=0.4,
             )
             return response.choices[0].message.content.strip()
         except Exception as e:

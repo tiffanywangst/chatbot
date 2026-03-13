@@ -4,8 +4,6 @@ from dotenv import load_dotenv
 # Load from .env file. Store your HF token in the .env file.
 load_dotenv()
 
-
-# BASE_MODEL = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
 BASE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"
 # Other options:
 # MODEL = "HuggingFaceTB/SmolLM3-3B"
